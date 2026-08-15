@@ -1,1 +1,1 @@
-<img src="/logo.webp" alt="How Southa Are You?" class="h-24 w-auto object-contain" />
+<img src="/browser.png" alt="How Southa Are You?" class="h-24 w-auto object-contain" />
