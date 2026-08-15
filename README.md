@@ -1,42 +1,39 @@
-# sv
+# How to Play on iPhone
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+## Get the game onto your iPhone
 
-## Creating a project
+Open Safari and go to the game:
 
-If you're seeing this, you've probably already done this step. Congrats!
+![Open Safari](static/assets/safari.png)
 
-```sh
-# create a new project
-npx sv create my-app
-```
+Enter the game URL:
 
-To recreate this project with the same configuration:
+![Enter the URL](static/assets/enter-url.png)
 
-```sh
-# recreate this project
-npx sv@0.17.0 create --template minimal --types ts --install npm how-southa-web-app
-```
+Log in:
 
-## Developing
+![Login](static/assets/login-scren.png)
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Add the game to your Home Screen
 
-```sh
-npm run dev
+Tap the Share button / three dots:
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+![Share menu](static/assets/share-threedots.png)
 
-## Building
+Choose **Add to Home Screen**:
 
-To create a production version of your app:
+![Add to Home Screen](static/assets/add-to-homescreen.png)
 
-```sh
-npm run build
-```
+Once it's added, launch the game directly from your iPhone Home Screen:
 
-You can preview the production build with `npm run preview`.
+![Launch from Home Screen](static/assets/launch-from-homescreen.png)
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Start playing
+
+Choose **Thirty Seconds** mode:
+
+![Thirty Seconds mode](static/assets/thirtyseconds-mode.png)
+
+Then follow the game rules:
+
+![Thirty Seconds rules](static/assets/thirtyseconds-rules.png)
