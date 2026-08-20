@@ -1,35 +1,49 @@
 <script lang="ts">
-    import { theme } from '$lib/stores/theme.svelte';
+	import { goto } from '$app/navigation';
+	import { auth } from '$lib/stores/auth.svelte';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		auth.init();
+		if (!auth.user) {
+			goto('/login');
+		}
+	});
+
+	function logout() {
+		auth.logout();
+		goto('/login');
+	}
 </script>
 
-<div class="flex min-h-dvh flex-col bg-white px-6 py-12 dark:bg-dark-bg">
-    <h1 class="text-center text-4xl font-black tracking-tight text-slate-900 dark:text-white">Settings</h1>
+<div class="dark:bg-dark-bg flex min-h-dvh flex-col bg-white px-6 py-12">
+	<div class="mx-auto w-full max-w-md">
+		<h1 class="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Settings</h1>
 
-    <div class="mt-10 flex flex-col gap-8">
-        <section>
-            <h2 class="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Appearance</h2>
-            <div class="mt-3 flex items-center justify-between rounded-3xl bg-slate-50 px-6 py-5 dark:bg-dark-surface">
-                <p class="text-lg font-black text-slate-900 dark:text-white">Dark Mode</p>
-                <button
-                    onclick={theme.toggle}
-                    class="relative h-9 w-16 shrink-0 rounded-full transition-colors {theme.dark ? 'bg-springbok-bright' : 'bg-slate-300'}"
-                    aria-label="Toggle dark mode"
-                >
-                    <span
-                        class="absolute left-1 top-1 h-7 w-7 rounded-full bg-white shadow transition-transform {theme.dark
-                            ? 'translate-x-7'
-                            : 'translate-x-0'}"
-                    ></span>
-                </button>
-            </div>
-        </section>
+		<div class="mt-8 space-y-6">
+			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">
+				<h2 class="text-lg font-bold text-slate-900 dark:text-white">Appearance</h2>
+				<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+					Dark mode is managed by your system
+				</p>
+			</div>
 
-        <section>
-            <h2 class="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Account</h2>
-            <div class="mt-3 rounded-3xl bg-slate-50 px-6 py-5 dark:bg-dark-surface">
-                <p class="text-lg font-black text-slate-900 dark:text-white">Reset / Change Password</p>
-                <p class="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">Password reset is coming soon.</p>
-            </div>
-        </section>
-    </div>
+			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">
+				<h2 class="text-lg font-bold text-slate-900 dark:text-white">Account</h2>
+				<button
+					onclick={logout}
+					class="mt-4 w-full rounded-2xl bg-red-500 px-6 py-4 text-center text-lg font-black text-white shadow-xl shadow-red-500/25 transition-transform active:scale-[0.98] dark:bg-red-600"
+				>
+					Log Out
+				</button>
+			</div>
+		</div>
+
+		<a
+			href="/home"
+			class="mt-8 block text-center text-sm font-bold text-slate-500 underline-offset-4 hover:underline dark:text-slate-400"
+		>
+			Back to home
+		</a>
+	</div>
 </div>
