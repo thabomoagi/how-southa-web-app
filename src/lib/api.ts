@@ -62,11 +62,8 @@ export const api = {
     resetPassword: (token: string, newPassword: string) =>
         request('/auth/reset-password', {
             method: 'POST',
-            body: JSON.stringify({
-                token,
-                newPassword
-            })
-		),
+            body: JSON.stringify({ token, newPassword })
+        }),
 
     getStats: () => request('/users/me/stats'),
 
@@ -83,10 +80,7 @@ export const api = {
     scoreRound: (gameId: string, roundId: string, score: number) =>
         request(`/thirty-seconds/games/${gameId}/rounds/score`, {
             method: 'POST',
-            body: JSON.stringify({
-                roundId,
-                score
-            })
+            body: JSON.stringify({ roundId, score })
         }),
 
     completeGame: (gameId: string) =>
