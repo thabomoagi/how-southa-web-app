@@ -8,6 +8,7 @@
 	let error = $state('');
 	let stats = $state<any>(null);
 	let user = $state<any>(null);
+	let location = $state('');
 
 	onMount(async () => {
 		auth.init();
@@ -20,6 +21,16 @@
 		user = auth.user;
 
 		try {
+			const response = await fetch('https://ipapi.co/json/');
+			if (response.ok) {
+				const data = await response.json();
+				location = `${data.city || ''}, ${data.country_name || ''}`.replace(/^, /, '');
+			}
+		} catch {
+			location = 'Unknown';
+		}
+
+		try {
 			stats = await api.getStats();
 			loading = false;
 		} catch (err) {
@@ -28,10 +39,9 @@
 		}
 	});
 
-	function formatDate(dateString: string) {
-		if (!dateString) return 'N/A';
-		const date = new Date(dateString);
-		return date.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+	function getInitials(username: string) {
+		if (!username) return '?';
+		return username.charAt(0).toUpperCase();
 	}
 </script>
 
@@ -52,16 +62,20 @@
 			>
 		</div>
 	{:else}
-		<h1 class="text-center text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-			Your Stats
-		</h1>
-
-		<div class="mt-4 text-center">
-			<p class="text-2xl font-black text-slate-900 dark:text-white">{user?.username}</p>
-			<p class="text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
-			<p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
-				Member since {formatDate(user?.createdAt)}
-			</p>
+		<div class="flex flex-col items-center">
+			<div
+				class="bg-springbok shadow-springbok/25 dark:bg-springbok-bright flex h-20 w-20 items-center justify-center rounded-full text-4xl font-black text-white shadow-xl"
+			>
+				{getInitials(user?.username)}
+			</div>
+			<h1
+				class="mt-4 text-center text-2xl font-black tracking-tight text-slate-900 dark:text-white"
+			>
+				{user?.username}
+			</h1>
+			{#if location}
+				<p class="text-sm text-slate-500 dark:text-slate-400">{location}</p>
+			{/if}
 		</div>
 
 		<div class="mt-10 flex flex-1 flex-col gap-5">
