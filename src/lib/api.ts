@@ -71,6 +71,12 @@ export const api = {
             body: JSON.stringify({ currentPassword, newPassword })
         }),
 
+    updateUser: (data: { username?: string; email?: string; profilePictureUrl?: string }) =>
+        request('/users/me', {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
+
     getStats: () => request('/users/me/stats'),
 
     startThirtySeconds: (playerNames: string[], roundsPerPlayer: number) =>

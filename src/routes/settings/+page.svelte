@@ -11,12 +11,43 @@
 	let error = $state('');
 	let success = $state(false);
 
+	let newUsername = $state('');
+	let usernameLoading = $state(false);
+	let usernameError = $state('');
+	let usernameSuccess = $state(false);
+
 	onMount(() => {
 		auth.init();
 		if (!auth.user) {
 			goto('/login');
 		}
+		newUsername = auth.user?.username || '';
 	});
+
+	async function changeUsername() {
+		usernameError = '';
+		usernameSuccess = false;
+
+		if (!newUsername.trim() || newUsername.trim().length < 3) {
+			usernameError = 'Username must be at least 3 characters';
+			return;
+		}
+
+		usernameLoading = true;
+		try {
+			await api.updateUser({ username: newUsername.trim() });
+			const currentUser = auth.user;
+			if (currentUser) {
+				currentUser.username = newUsername.trim();
+				localStorage.setItem('user', JSON.stringify(currentUser));
+			}
+			usernameSuccess = true;
+		} catch (err) {
+			usernameError = err instanceof Error ? err.message : 'Failed to update username';
+		} finally {
+			usernameLoading = false;
+		}
+	}
 
 	async function changePassword() {
 		error = '';
@@ -66,6 +97,52 @@
 				<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
 					Dark mode is managed by your system
 				</p>
+			</div>
+
+			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">
+				<h2 class="text-lg font-bold text-slate-900 dark:text-white">Change Username</h2>
+
+				{#if usernameSuccess}
+					<div
+						class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-center text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+					>
+						Username updated successfully
+					</div>
+				{/if}
+
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						changeUsername();
+					}}
+					class="mt-4 space-y-4"
+				>
+					<input
+						bind:value={newUsername}
+						type="text"
+						placeholder="New username"
+						autocomplete="username"
+						required
+						minlength="3"
+						class="focus:border-springbok dark:bg-dark-surface w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-lg font-semibold placeholder:text-slate-400 focus:outline-none dark:border-slate-700 dark:placeholder:text-slate-500"
+					/>
+
+					{#if usernameError}
+						<p class="text-center text-sm font-bold text-red-600 dark:text-red-400">
+							{usernameError}
+						</p>
+					{/if}
+
+					<button
+						type="submit"
+						disabled={usernameLoading ||
+							!newUsername.trim() ||
+							newUsername.trim() === auth.user?.username}
+						class="bg-springbok shadow-springbok/25 dark:bg-springbok-bright w-full rounded-2xl px-6 py-4 text-center text-lg font-black text-white shadow-xl transition-transform active:scale-[0.98] disabled:opacity-50"
+					>
+						{usernameLoading ? 'Updating...' : 'Update Username'}
+					</button>
+				</form>
 			</div>
 
 			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">
