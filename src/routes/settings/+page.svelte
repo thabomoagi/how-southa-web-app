@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
+
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let loading = $state(false);
+	let error = $state('');
+	let success = $state(false);
 
 	onMount(() => {
 		auth.init();
@@ -10,7 +18,39 @@
 		}
 	});
 
+	async function changePassword() {
+		error = '';
+		success = false;
+
+		if (newPassword.length < 8) {
+			error = 'New password must be at least 8 characters';
+			return;
+		}
+
+		if (newPassword !== confirmPassword) {
+			error = 'Passwords do not match';
+			return;
+		}
+
+		loading = true;
+		try {
+			await api.changePassword(currentPassword, newPassword);
+			success = true;
+			currentPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to change password';
+		} finally {
+			loading = false;
+		}
+	}
+
 	function logout() {
+		const refreshToken = localStorage.getItem('refreshToken');
+		if (refreshToken) {
+			api.logout(refreshToken).catch(() => {});
+		}
 		auth.logout();
 		goto('/login');
 	}
@@ -26,6 +66,65 @@
 				<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
 					Dark mode is managed by your system
 				</p>
+			</div>
+
+			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">
+				<h2 class="text-lg font-bold text-slate-900 dark:text-white">Change Password</h2>
+
+				{#if success}
+					<div
+						class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-center text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400"
+					>
+						Password updated successfully
+					</div>
+				{/if}
+
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						changePassword();
+					}}
+					class="mt-4 space-y-4"
+				>
+					<input
+						bind:value={currentPassword}
+						type="password"
+						placeholder="Current password"
+						autocomplete="current-password"
+						required
+						class="focus:border-springbok dark:bg-dark-surface w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-lg font-semibold placeholder:text-slate-400 focus:outline-none dark:border-slate-700 dark:placeholder:text-slate-500"
+					/>
+					<input
+						bind:value={newPassword}
+						type="password"
+						placeholder="New password (min 8 characters)"
+						autocomplete="new-password"
+						required
+						minlength="8"
+						class="focus:border-springbok dark:bg-dark-surface w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-lg font-semibold placeholder:text-slate-400 focus:outline-none dark:border-slate-700 dark:placeholder:text-slate-500"
+					/>
+					<input
+						bind:value={confirmPassword}
+						type="password"
+						placeholder="Confirm new password"
+						autocomplete="new-password"
+						required
+						minlength="8"
+						class="focus:border-springbok dark:bg-dark-surface w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-lg font-semibold placeholder:text-slate-400 focus:outline-none dark:border-slate-700 dark:placeholder:text-slate-500"
+					/>
+
+					{#if error}
+						<p class="text-center text-sm font-bold text-red-600 dark:text-red-400">{error}</p>
+					{/if}
+
+					<button
+						type="submit"
+						disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+						class="bg-springbok shadow-springbok/25 dark:bg-springbok-bright w-full rounded-2xl px-6 py-4 text-center text-lg font-black text-white shadow-xl transition-transform active:scale-[0.98] disabled:opacity-50"
+					>
+						{loading ? 'Updating...' : 'Update Password'}
+					</button>
+				</form>
 			</div>
 
 			<div class="rounded-2xl border-2 border-slate-200 p-6 dark:border-slate-700">

@@ -65,6 +65,12 @@ export const api = {
             body: JSON.stringify({ token, newPassword })
         }),
 
+    changePassword: (currentPassword: string, newPassword: string) =>
+        request('/users/me/password', {
+            method: 'PATCH',
+            body: JSON.stringify({ currentPassword, newPassword })
+        }),
+
     getStats: () => request('/users/me/stats'),
 
     startThirtySeconds: (playerNames: string[], roundsPerPlayer: number) =>
@@ -117,5 +123,11 @@ export const api = {
                 profilePictureUrl: string | null;
                 score: number;
             }>;
-        }>(`/leaderboard/qna?period=${period}&limit=${limit}`)
+        }>(`/leaderboard/qna?period=${period}&limit=${limit}`),
+
+    logout: (refreshToken: string) =>
+        request('/auth/logout', {
+            method: 'POST',
+            body: JSON.stringify({ refreshToken })
+        })
 };

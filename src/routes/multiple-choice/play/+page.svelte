@@ -17,49 +17,66 @@
 	let questionShownAt = $state(Date.now());
 	let timerId: ReturnType<typeof setInterval>;
 
+	async function startGame() {
+		const difficulties = ['EASY', 'MEDIUM', 'HARD'];
+		const shuffled = difficulties.sort(() => Math.random() - 0.5);
+
+		for (const difficulty of shuffled) {
+			try {
+				const res: any = await api.startQna(difficulty);
+				attemptId = res.attemptId ?? res.id ?? '';
+				questions = (res.questions ?? []).map((q: any) => ({
+					id: q.id ?? q.questionId,
+					text: q.prompt ?? q.questionText ?? q.text ?? q.question ?? '',
+					options: (q.options ?? []).map((o: any) => ({
+						id: o.id ?? o.optionId,
+						text: typeof o === 'string' ? o : (o.optionText ?? o.text ?? o.option ?? o.value ?? '')
+					}))
+				}));
+				if (questions.length > 0) {
+					questionShownAt = Date.now();
+					loading = false;
+					return;
+				}
+			} catch (err) {
+				const message = err instanceof Error ? err.message : '';
+				if (message.includes('daily limit') || message.includes('20')) {
+					error = 'You have reached your daily limit of 20 MCQ games. Come back tomorrow!';
+					loading = false;
+					return;
+				}
+				if (message.includes('not enough') || message.includes('insufficient')) {
+					continue;
+				}
+				error = message || 'Failed to start game';
+				loading = false;
+				return;
+			}
+		}
+		error = 'No questions available. Please try again later.';
+		loading = false;
+	}
+
 	onMount(async () => {
 		auth.init();
-
 		if (!auth.user) {
 			goto('/login');
 			return;
 		}
-
-		try {
-			const difficulties = ['EASY', 'MEDIUM', 'HARD'];
-			const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-			const res: any = await api.startQna(randomDifficulty);
-			attemptId = res.attemptId ?? res.id ?? '';
-			questions = (res.questions ?? []).map((q: any) => ({
-				id: q.id ?? q.questionId,
-				text: q.prompt ?? q.questionText ?? q.text ?? q.question ?? '',
-				options: (q.options ?? []).map((o: any) => ({
-					id: o.id ?? o.optionId,
-					text: typeof o === 'string' ? o : (o.optionText ?? o.text ?? o.option ?? o.value ?? '')
-				}))
-			}));
-			questionShownAt = Date.now();
-			loading = false;
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to start game';
-			loading = false;
-		}
+		await startGame();
 	});
 
 	$effect(() => {
 		if (!loading && !error && questions.length > 0 && !submitted) {
 			const endTime = Date.now() + 30 * 1000;
-
 			timerId = setInterval(() => {
 				const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
 				timeLeft = remaining;
-
 				if (remaining === 0) {
 					clearInterval(timerId);
 					finishGame();
 				}
 			}, 100);
-
 			return () => {
 				if (timerId) clearInterval(timerId);
 			};

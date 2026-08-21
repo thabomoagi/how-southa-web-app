@@ -5,13 +5,12 @@ function createAuth() {
 
     function init() {
         if (typeof window === 'undefined') return;
-
         const saved = localStorage.getItem('user');
-
         if (saved) {
             try {
                 user = JSON.parse(saved);
             } catch {
+                localStorage.removeItem('user');
                 user = null;
             }
         }
@@ -29,23 +28,24 @@ function createAuth() {
             localStorage.setItem('refreshToken', refreshToken);
         }
 
-        const userData = {
-            userId: data?.userId,
-            username: data?.username,
-            email: data?.email,
-            profilePictureUrl: data?.profilePictureUrl
-        };
-
-        user = userData;
-
-        localStorage.setItem('user', JSON.stringify(userData));
+        if (data?.username || data?.userId) {
+            user = {
+                id: data.userId,
+                userId: data.userId,
+                username: data.username,
+                email: data.email,
+                profilePictureUrl: data.profilePictureUrl
+            };
+            localStorage.setItem('user', JSON.stringify(user));
+        } else {
+            user = null;
+        }
     }
 
     return {
         get user() {
             return user;
         },
-
         init,
 
         async login(identifier: string, password: string) {
@@ -62,7 +62,6 @@ function createAuth() {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
-
             user = null;
         }
     };
