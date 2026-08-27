@@ -2,6 +2,7 @@
     import { browser } from '$app/environment';
     import { auth } from '$lib/stores/auth.svelte';
     import { theme } from '$lib/stores/theme.svelte';
+    import BottomNav from '$lib/components/BottomNav.svelte';
     import '../app.css';
 
     let { children } = $props();
@@ -17,3 +18,5 @@
 </script>
 
 {@render children()}
+
+<BottomNav />

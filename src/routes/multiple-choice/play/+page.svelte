@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { api } from '$lib/api';
+    import { requireAuth } from '$lib/auth-guard';
     import { onMount } from 'svelte';
 
     let loading = $state(true);
@@ -14,47 +15,95 @@
     let submitted = $state(false);
     let answers = $state<any[]>([]);
     let questionShownAt = $state(Date.now());
+    let timerId: ReturnType<typeof setInterval> | undefined;
+
+    async function startGame() {
+        const difficulties = ['EASY', 'MEDIUM', 'HARD'];
+        const shuffled = [...difficulties].sort(() => Math.random() - 0.5);
+
+        for (const difficulty of shuffled) {
+            try {
+                const res: any = await api.startQna(difficulty);
+
+                attemptId = res.attemptId ?? res.id ?? '';
+
+                questions = (res.questions ?? []).map((q: any) => ({
+                    id: q.id ?? q.questionId,
+                    text: q.prompt ?? q.questionText ?? q.text ?? q.question ?? '',
+                    options: (q.options ?? []).map((o: any) => ({
+                        id: o.id ?? o.optionId,
+                        text:
+                            typeof o === 'string'
+                                ? o
+                                : (o.optionText ?? o.text ?? o.option ?? o.value ?? '')
+                    }))
+                }));
+
+                if (questions.length > 0) {
+                    questionShownAt = Date.now();
+                    loading = false;
+                    return;
+                }
+            } catch (err) {
+                const message = err instanceof Error ? err.message : '';
+
+                if (message.toLowerCase().includes('daily limit') || message.includes('20')) {
+                    error = 'You have reached your daily limit of 20 MCQ games. Come back tomorrow!';
+                    loading = false;
+                    return;
+                }
+
+                if (
+                    message.toLowerCase().includes('not enough') ||
+                    message.toLowerCase().includes('insufficient')
+                ) {
+                    continue;
+                }
+
+                error = message || 'Failed to start game';
+                loading = false;
+                return;
+            }
+        }
+
+        error = 'No questions available. Please try again later.';
+        loading = false;
+    }
 
     onMount(async () => {
-        try {
-            const res: any = await api.startQna(5, 120);
-            attemptId = res.attemptId ?? res.id ?? '';
-            questions = (res.questions ?? []).map((q: any) => ({
-                id: q.id ?? q.questionId,
-                text: q.prompt ?? q.questionText ?? q.text ?? q.question ?? '',
-                options: (q.options ?? []).map((o: any) => ({
-                    id: o.id ?? o.optionId,
-                    text:
-                        typeof o === 'string'
-                            ? o
-                            : (o.optionText ?? o.text ?? o.option ?? o.value ?? '')
-                }))
-            }));
-            questionShownAt = Date.now();
-            loading = false;
-        } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to start game';
-            loading = false;
-        }
+        if (!requireAuth()) return;
+        await startGame();
     });
 
     $effect(() => {
         if (!loading && !error && questions.length > 0 && !submitted) {
-            const id = setInterval(() => {
-                if (timeLeft <= 1) {
-                    clearInterval(id);
+            const endTime = Date.now() + 30_000;
+
+            timerId = setInterval(() => {
+                const remaining = Math.max(
+                    0,
+                    Math.ceil((endTime - Date.now()) / 1000)
+                );
+
+                timeLeft = remaining;
+
+                if (remaining === 0) {
+                    if (timerId) clearInterval(timerId);
                     finishGame();
-                } else {
-                    timeLeft--;
                 }
-            }, 1000);
-            return () => clearInterval(id);
+            }, 100);
+
+            return () => {
+                if (timerId) clearInterval(timerId);
+            };
         }
     });
 
     function selectOption(optionId: string) {
         if (locked || submitted) return;
+
         locked = true;
+
         answers = [
             ...answers,
             {
@@ -63,6 +112,7 @@
                 timeTakenMs: Date.now() - questionShownAt
             }
         ];
+
         if (currentIndex + 1 >= questions.length) {
             finishGame();
         } else {
@@ -74,31 +124,72 @@
 
     async function finishGame() {
         if (submitted) return;
+
         submitted = true;
         submitting = true;
+
+        if (timerId) clearInterval(timerId);
+
         try {
             const res: any = await api.submitQna(attemptId, answers);
-            goto(`/multiple-choice/result?score=${res.score ?? 0}`);
+            goto(`/multiple-choice/game-over?score=${res.score ?? 0}`);
         } catch (err) {
             error = err instanceof Error ? err.message : 'Failed to submit answers';
             submitted = false;
             submitting = false;
         }
     }
+
+    function retryStart() {
+        loading = true;
+        error = '';
+        answers = [];
+        currentIndex = 0;
+        timeLeft = 30;
+        locked = false;
+        submitted = false;
+        questionShownAt = Date.now();
+
+        startGame();
+    }
 </script>
+
+<svelte:head>
+    <title>Playing - Multiple Choice - How Southa Are You?</title>
+</svelte:head>
 
 {#if loading || submitting}
     <div class="flex min-h-dvh flex-col items-center justify-center gap-4 bg-white dark:bg-dark-bg">
         <div class="h-12 w-12 animate-spin rounded-full border-4 border-sa-yellow/30 border-t-sa-yellow"></div>
+
         <p class="text-lg font-bold text-slate-600 dark:text-slate-300">
             {submitting ? 'Calculating score...' : 'Loading questions...'}
         </p>
     </div>
+
 {:else if error}
     <div class="flex min-h-dvh flex-col items-center justify-center gap-6 bg-white px-6 dark:bg-dark-bg">
-        <p class="text-xl font-bold text-red-500">{error}</p>
-        <button onclick={() => goto('/home')} class="rounded-2xl bg-sa-yellow px-8 py-4 text-lg font-black text-slate-900">GO HOME</button>
+        <p class="max-w-sm text-center text-xl font-bold text-red-500">
+            {error}
+        </p>
+
+        <div class="flex w-full max-w-sm flex-col gap-3">
+            <button
+                onclick={retryStart}
+                class="w-full rounded-3xl bg-sa-yellow px-6 py-5 text-xl font-black tracking-wider text-slate-900 shadow-xl shadow-sa-yellow/30 transition-transform active:scale-[0.98]"
+            >
+                RETRY
+            </button>
+
+            <button
+                onclick={() => goto('/home')}
+                class="w-full rounded-3xl border-2 border-slate-200 bg-white px-6 py-5 text-xl font-black tracking-wider text-slate-700 transition-transform active:scale-[0.98] dark:border-slate-700 dark:bg-dark-surface dark:text-white"
+            >
+                HOME
+            </button>
+        </div>
     </div>
+
 {:else if questions.length > 0}
     <div class="flex min-h-dvh flex-col bg-white dark:bg-dark-bg">
         <header class="flex flex-col items-center gap-1 px-6 pt-8">
@@ -111,6 +202,7 @@
             >
                 {timeLeft}
             </div>
+
             <p class="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 Question {currentIndex + 1} of {questions.length}
             </p>
