@@ -134,35 +134,6 @@
         });
     }
 
-    async function waitForImage(
-        url: string,
-        maxAttempts = 10,
-        delayMs = 500
-    ): Promise<boolean> {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            const loaded = await new Promise<boolean>((resolve) => {
-                const image = new Image();
-
-                image.onload = () => resolve(true);
-                image.onerror = () => resolve(false);
-
-                image.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-            });
-
-            if (loaded) {
-                return true;
-            }
-
-            if (attempt < maxAttempts - 1) {
-                await new Promise((resolve) =>
-                    setTimeout(resolve, delayMs)
-                );
-            }
-        }
-
-        return false;
-    }
-
     async function uploadAvatar(file: File) {
         picError = '';
         picSuccess = false;
@@ -183,15 +154,7 @@
             // Step 2: Upload the tiny compressed WebP file to backend
             const url = await api.uploadAvatar(compressedFile);
 
-            // Step 3: Ensure image is readable
-            const imageReady = await waitForImage(url);
-
-            if (!imageReady) {
-                throw new Error(
-                    'Your profile picture was uploaded, but the processed image is not available yet. Please try again in a moment.'
-                );
-            }
-
+            // Step 3: Update the user state immediately
             auth.updateUserState({
                 profilePictureUrl: url
             });
@@ -247,7 +210,6 @@
 
             usernameSuccess = true;
             
-            // Auto-clear success message after 5 seconds
             setTimeout(() => {
                 usernameSuccess = false;
             }, 5000);
@@ -285,7 +247,6 @@
 
             emailSuccess = true;
             
-            // Auto-clear success message after 5 seconds
             setTimeout(() => {
                 emailSuccess = false;
             }, 5000);
@@ -324,7 +285,6 @@
             newPassword = '';
             confirmPassword = '';
             
-            // Auto-clear success message after 5 seconds
             setTimeout(() => {
                 success = false;
             }, 5000);
