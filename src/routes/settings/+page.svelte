@@ -65,12 +65,75 @@
     }
 
     /**
-     * Wait until the uploaded image URL can actually be loaded by the browser.
-     *
-     * The backend may need a short amount of time to finish image conversion
-     * and object storage. We do not update the UI until the returned URL is
-     * confirmed to be readable.
+     * Resizes and compresses the image to WebP (<=90KB) in the browser
      */
+    async function compressImage(file: File): Promise<File> {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 512;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                    if (width > MAX) {
+                        height = Math.round(height * (MAX / width));
+                        width = MAX;
+                    }
+                } else {
+                    if (height > MAX) {
+                        width = Math.round(width * (MAX / height));
+                        height = MAX;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                let quality = 0.85;
+                
+                const tryCompress = (currentQuality: number) => {
+                    canvas.toBlob(
+                        (blob) => {
+                            if (!blob) {
+                                reject(new Error('Canvas compression failed'));
+                                return;
+                            }
+                            
+                            if (blob.size <= 90 * 1024 || currentQuality <= 0.4) {
+                                if (blob.size > 100 * 1024) {
+                                    reject(new Error('Unable to compress image to under 100 KB'));
+                                    return;
+                                }
+                                const compressedFile = new File(
+                                    [blob],
+                                    file.name.replace(/\.[^.]+$/, '.webp'),
+                                    { type: 'image/webp' }
+                                );
+                                resolve(compressedFile);
+                            } else {
+                                tryCompress(currentQuality - 0.05);
+                            }
+                        },
+                        'image/webp',
+                        currentQuality
+                    );
+                };
+
+                tryCompress(quality);
+            };
+            img.onerror = (error) => reject(error);
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
     async function waitForImage(
         url: string,
         maxAttempts = 10,
@@ -114,21 +177,13 @@
         uploading = true;
 
         try {
-            /*
-             * Step 1:
-             * Upload the original image to the backend.
-             *
-             * api.uploadAvatar() already waits for the HTTP response.
-             */
-            const url = await api.uploadAvatar(file);
+            // Step 1: Compress on the frontend first!
+            const compressedFile = await compressImage(file);
 
-            /*
-             * Step 2:
-             * Make sure the returned image URL is actually available.
-             *
-             * This protects against the backend returning the URL slightly
-             * before the converted image has finished becoming available.
-             */
+            // Step 2: Upload the tiny compressed WebP file to backend
+            const url = await api.uploadAvatar(compressedFile);
+
+            // Step 3: Ensure image is readable
             const imageReady = await waitForImage(url);
 
             if (!imageReady) {
@@ -137,16 +192,16 @@
                 );
             }
 
-            /*
-             * Step 3:
-             * Only update the local auth state after the image is confirmed
-             * to be readable.
-             */
             auth.updateUserState({
                 profilePictureUrl: url
             });
 
             picSuccess = true;
+            
+            // Auto-clear success message after 5 seconds
+            setTimeout(() => {
+                picSuccess = false;
+            }, 5000);
         } catch (err) {
             picError =
                 err instanceof Error
@@ -161,7 +216,6 @@
         const input = event.currentTarget as HTMLInputElement;
         const file = input.files?.[0];
 
-        // Allow selecting the same file again.
         input.value = '';
 
         if (file) {
@@ -192,6 +246,11 @@
             });
 
             usernameSuccess = true;
+            
+            // Auto-clear success message after 5 seconds
+            setTimeout(() => {
+                usernameSuccess = false;
+            }, 5000);
         } catch (err) {
             usernameError =
                 err instanceof Error
@@ -225,6 +284,11 @@
             });
 
             emailSuccess = true;
+            
+            // Auto-clear success message after 5 seconds
+            setTimeout(() => {
+                emailSuccess = false;
+            }, 5000);
         } catch (err) {
             emailError =
                 err instanceof Error
@@ -259,6 +323,11 @@
             currentPassword = '';
             newPassword = '';
             confirmPassword = '';
+            
+            // Auto-clear success message after 5 seconds
+            setTimeout(() => {
+                success = false;
+            }, 5000);
         } catch (err) {
             error =
                 err instanceof Error
