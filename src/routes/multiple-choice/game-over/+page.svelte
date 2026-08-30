@@ -24,7 +24,7 @@
         </h1>
 
         <p class="mt-6 text-4xl font-black text-springbok dark:text-sa-yellow">
-            {score} / 5 Correct
+            {score} Points
         </p>
 
         <p class="mt-5 max-w-sm text-lg font-semibold text-slate-600 dark:text-slate-300">
